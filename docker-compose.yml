@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: food_delivery_db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: food_delivery
+      MYSQL_USER: food_user
+      MYSQL_PASSWORD: food_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - food_delivery_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  app:
+    build: .
+    container_name: food_delivery_app
+    environment:
+      DATABASE_URL: mysql+mysqlconnector://food_user:food_password@mysql:3306/food_delivery
+      SQLALCHEMY_DATABASE_URL: mysql+mysqlconnector://food_user:food_password@mysql:3306/food_delivery
+    ports:
+      - "8000:8000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    networks:
+      - food_delivery_network
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  mysql_data:
+
+networks:
+  food_delivery_network:
+    driver: bridge
